@@ -1,0 +1,23 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: P80 builder <builder@localhost>
+Date: Fri, 30 Oct 2026 15:45:00 +0100
+Subject: [PATCH] Use the wide welcome layout from 840dp
+
+The wide welcome screen puts the logo and the title (57sp) in one row
+with the accessibility and Start buttons. Small tablets in portrait just
+cross 600dp (Teclast P80: 800x1280 at 213 dpi, w601dp), so the buttons
+take almost the whole row and "Welcome to LineageOS" wraps into a narrow
+column of word fragments. Switch to the wide layout and its larger title
+from the expanded width class (840dp, e.g. the same tablet in landscape)
+instead; narrower screens keep the regular layout.
+---
+diff --git a/app/src/main/res/layout-w600dp/welcome_activity.xml b/app/src/main/res/layout-w840dp/welcome_activity.xml
+similarity index 100%
+rename from app/src/main/res/layout-w600dp/welcome_activity.xml
+rename to app/src/main/res/layout-w840dp/welcome_activity.xml
+diff --git a/app/src/main/res/values-w600dp-h480dp/dimens.xml b/app/src/main/res/values-w840dp-h480dp/dimens.xml
+similarity index 100%
+rename from app/src/main/res/values-w600dp-h480dp/dimens.xml
+rename to app/src/main/res/values-w840dp-h480dp/dimens.xml
+-- 
+2.43.0

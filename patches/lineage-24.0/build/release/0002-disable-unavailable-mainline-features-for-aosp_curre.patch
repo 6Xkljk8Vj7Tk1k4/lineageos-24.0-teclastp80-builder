@@ -1,0 +1,68 @@
+From 174b5e59ca6cb32f9a4701d7e3dfbbed2577bf71 Mon Sep 17 00:00:00 2001
+From: "Christopher A. Williamson" <contact@chrisaw.io>
+Date: Wed, 28 Oct 2026 20:23:42 +0000
+Subject: [PATCH] disable unavailable mainline features for aosp_current
+
+these aosp_current features are unavailable or pointless on the gsi
+fleet: apexd data-mount and early-vm bootstrap crash on legacy vendor
+kernels, autonomous repairing wedges smp state machines, and the
+npumanager/ranging/aiseal/anomaly modules serve tensor and uwb
+hardware the fleet does not have. pure cp2a flag flips; upstream
+product and classpath wiring is flag-gated, so everything drops out
+cleanly.
+
+[Teclast P80 / LineageOS 24.0 port: only the apexd and Bluetooth flips.
+LineageOS keeps the NPU manager, ranging, AISEAL and anomaly detector
+modules (prebuilt module SDKs list them), and AVF stays in the product:
+with RELEASE_AVF_ENABLE_EARLY_VM false, com.android.virt is no longer a
+bootstrap APEX and stays inactive, so framework-virtualization.jar is
+missing from the runtime boot classpath and ART rejects the boot image's
+mainline extension ("Unexpected component count ... received 38,
+expected ... <= 37").]
+
+Change-Id: I05400ee2215b0056adfd292fdfcd2f844979380d
+---
+ .../mount_before_data_flag_values.textproto                   | 2 +-
+ .../autonomous_repairing_initiation_flag_values.textproto     | 2 +-
+ .../bugfix_autonomous_repairing_flag_values.textproto         | 2 +-
+ 3 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/aconfig/cp2a/com.android.apex.flags/mount_before_data_flag_values.textproto b/aconfig/cp2a/com.android.apex.flags/mount_before_data_flag_values.textproto
+index 56f7709..8d990f5 100644
+--- a/aconfig/cp2a/com.android.apex.flags/mount_before_data_flag_values.textproto
++++ b/aconfig/cp2a/com.android.apex.flags/mount_before_data_flag_values.textproto
+@@ -1,6 +1,6 @@
+ flag_value {
+   package: "com.android.apex.flags"
+   name: "mount_before_data"
+-  state: ENABLED
++  state: DISABLED
+   permission: READ_ONLY
+ }
+diff --git a/aconfig/cp2a/com.android.bluetooth.flags/autonomous_repairing_initiation_flag_values.textproto b/aconfig/cp2a/com.android.bluetooth.flags/autonomous_repairing_initiation_flag_values.textproto
+index 3082867..9f180f0 100644
+--- a/aconfig/cp2a/com.android.bluetooth.flags/autonomous_repairing_initiation_flag_values.textproto
++++ b/aconfig/cp2a/com.android.bluetooth.flags/autonomous_repairing_initiation_flag_values.textproto
+@@ -1,6 +1,6 @@
+ flag_value {
+   package: "com.android.bluetooth.flags"
+   name: "autonomous_repairing_initiation"
+-  state: ENABLED
++  state: DISABLED
+   permission: READ_ONLY
+ }
+diff --git a/aconfig/cp2a/com.android.bluetooth.flags/bugfix_autonomous_repairing_flag_values.textproto b/aconfig/cp2a/com.android.bluetooth.flags/bugfix_autonomous_repairing_flag_values.textproto
+index b5a555e..90b893e 100644
+--- a/aconfig/cp2a/com.android.bluetooth.flags/bugfix_autonomous_repairing_flag_values.textproto
++++ b/aconfig/cp2a/com.android.bluetooth.flags/bugfix_autonomous_repairing_flag_values.textproto
+@@ -1,6 +1,6 @@
+ flag_value {
+   package: "com.android.bluetooth.flags"
+   name: "bugfix_autonomous_repairing"
+-  state: ENABLED
++  state: DISABLED
+   permission: READ_ONLY
+ }
+-- 
+2.25.1
+

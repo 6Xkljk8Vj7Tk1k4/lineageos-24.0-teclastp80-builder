@@ -1,0 +1,35 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: P80 builder <builder@localhost>
+Date: Fri, 30 Oct 2026 20:20:00 +0100
+Subject: [PATCH] zygote: skip capabilities the kernel does not know
+
+zygote_next drops every capability outside the requested bounding set,
+including CAP_PERFMON, CAP_BPF and CAP_CHECKPOINT_RESTORE. On kernels
+older than 5.8/5.9 PR_CAPBSET_READ fails with EINVAL for those, and the
+.expect() aborted every child: on the Teclast P80 (Linux 4.9) Chromium's
+GPU process died as "zygote-child" with SIGABRT right after its cgroup was
+created, and the browser then stopped with "Timed out waiting for GPU
+channel". The Java zygote only walks the bounding set up to the first
+EINVAL; treat an unknown capability as not in the set instead.
+---
+diff --git a/zygote/src/child_process.rs b/zygote/src/child_process.rs
+--- a/zygote/src/child_process.rs
++++ b/zygote/src/child_process.rs
+@@ -83,8 +83,13 @@
+     if let Some(cap_bound) = spawn_params.cap_bound {
+         for flag in cap_bound.complement().iter() {
+             let cap = Capability::try_from(flag.bits().trailing_zeros()).unwrap();
+-            if cap::cap_within_bound(cap).expect("Failed to check capability bound") {
+-                cap::cap_drop_bound(cap).expect("Failed to drop capability bound");
++            // A capability the running kernel does not know (CAP_PERFMON, CAP_BPF and
++            // CAP_CHECKPOINT_RESTORE before Linux 5.8/5.9) cannot be in its bounding set:
++            // PR_CAPBSET_READ fails with EINVAL for it, and there is nothing to drop.
++            match cap::cap_within_bound(cap) {
++                Ok(true) => cap::cap_drop_bound(cap).expect("Failed to drop capability bound"),
++                Ok(false) => {}
++                Err(e) => warn!("Capability {cap:?} unknown to the kernel, not dropped: {e:?}"),
+             }
+         }
+     }
+-- 
+2.43.0

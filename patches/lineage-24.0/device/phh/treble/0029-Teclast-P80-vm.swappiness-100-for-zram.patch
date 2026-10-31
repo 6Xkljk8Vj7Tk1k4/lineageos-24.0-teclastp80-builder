@@ -1,0 +1,27 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: P80 builder <builder@localhost>
+Date: Fri, 30 Oct 2026 23:45:00 +0100
+Subject: [PATCH] Teclast P80: vm.swappiness 100 for zram
+
+The tablet swaps only to zram; with the kernel default of 60 the kernel
+drops more file pages (code) that the eMMC has to read back later.
+Measured on LineageOS 24.0 with the same app-switching and UI scripts:
+fewer janky frames in the notification shade (49 % instead of 56 %),
+equal or faster app starts, more memory free after eight apps.
+---
+diff --git a/p80/p80.rc b/p80/p80.rc
+--- a/p80/p80.rc
++++ b/p80/p80.rc
+@@ -13,3 +13,10 @@
+ # Without a relay port traced serves only its local sockets.
+ on early-init
+     setprop traced.relay_producer_port ""
++
++# zram (lz4, 75 % of RAM) is the only swap: prefer compressing idle anonymous memory over
++# dropping file pages that have to be read back from the eMMC. Measured on 24.0 against the
++# kernel's default of 60: notification shade 49 % instead of 56 % janky frames, apps start
++# as fast or faster, more free memory after switching through eight apps.
++on property:sys.boot_completed=1
++    write /proc/sys/vm/swappiness 100
+-- 
+2.43.0

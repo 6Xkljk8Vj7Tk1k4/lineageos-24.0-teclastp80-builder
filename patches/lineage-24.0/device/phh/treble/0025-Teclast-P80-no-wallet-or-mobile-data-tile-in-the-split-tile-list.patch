@@ -1,0 +1,25 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: P80 builder <builder@localhost>
+Date: Fri, 30 Oct 2026 17:55:00 +0100
+Subject: [PATCH] Teclast P80: no wallet or mobile data tile in the split tile list
+
+Android 17's SystemUI splits the internet tile into Wi-Fi and mobile data
+and takes its default tiles from quick_settings_tiles_default_split, which
+0014 does not override: a fresh install showed the Wallet tile again.
+Override that list too, without "wallet" and "cell".
+---
+diff --git a/overlay/frameworks/base/packages/SystemUI/res/values/config.xml b/overlay/frameworks/base/packages/SystemUI/res/values/config.xml
+--- a/overlay/frameworks/base/packages/SystemUI/res/values/config.xml
++++ b/overlay/frameworks/base/packages/SystemUI/res/values/config.xml
+@@ -8,4 +8,9 @@
+     <string name="quick_settings_tiles_new_default" translatable="false">
+         internet,bt,dnd,cast,flashlight,airplane,rotation,alarm,controls,screenrecord,battery
+     </string>
++    <!-- Android 17 splits the internet tile into Wi-Fi and mobile data and reads this list:
++         AOSP's without "cell" and "wallet" (no modem, no payment app). -->
++    <string name="quick_settings_tiles_default_split" translatable="false">
++        wifi,bt,cast,dnd,airplane,rotation,flashlight,battery,alarm,controls,screenrecord
++    </string>
+ </resources>
+-- 
+2.43.0

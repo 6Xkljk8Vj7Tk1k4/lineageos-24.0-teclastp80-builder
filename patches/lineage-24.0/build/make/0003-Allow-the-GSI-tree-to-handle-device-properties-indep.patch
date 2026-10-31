@@ -1,0 +1,35 @@
+From 1b9e9dad725f174cf44eb0d6b91f7a7bb7c95b43 Mon Sep 17 00:00:00 2001
+From: MisterZtr <andey2004586@gmail.com>
+Date: Wed, 28 Oct 2026 20:03:39 +0000
+Subject: [PATCH] Allow the GSI tree to handle device properties  independently
+
+Change-Id: Iaf3099cb448939cf270ebea365ad841373c09caa
+---
+ target/product/generic_system.mk | 11 -----------
+ 1 file changed, 11 deletions(-)
+
+diff --git a/target/product/generic_system.mk b/target/product/generic_system.mk
+index 7ee2abc..f9edfe9 100644
+--- a/target/product/generic_system.mk
++++ b/target/product/generic_system.mk
+@@ -116,17 +116,6 @@ PRODUCT_USE_DYNAMIC_PARTITION_SIZE := true
+ 
+ PRODUCT_ENFORCE_RRO_TARGETS := *
+ 
+-PRODUCT_NAME := generic_system
+-PRODUCT_BRAND := generic
+-
+-# Define /system partition-specific product properties to identify that /system
+-# partition is generic_system.
+-PRODUCT_SYSTEM_NAME := generic_system
+-PRODUCT_SYSTEM_BRAND := Android
+-PRODUCT_SYSTEM_MANUFACTURER := Android
+-PRODUCT_SYSTEM_MODEL := Generic System
+-PRODUCT_SYSTEM_DEVICE := generic
+-
+ _base_mk_allowed_list :=
+ 
+ _my_allowed_list := $(_base_mk_allowed_list)
+-- 
+2.25.1
+

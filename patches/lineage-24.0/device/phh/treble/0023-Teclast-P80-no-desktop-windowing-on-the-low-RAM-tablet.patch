@@ -1,0 +1,34 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: P80 builder <builder@localhost>
+Date: Fri, 30 Oct 2026 15:00:00 +0100
+Subject: [PATCH] Teclast P80: no desktop windowing on the low-RAM tablet
+
+LineageOS 24.0 sets config_isDesktopModeSupported in its common overlay
+and config_canInternalDisplayHostDesktops for tablets. The P80 keeps the
+stock ro.config.low_ram=true, so ActivityTaskManager reports no
+multi-window and no freeform support, while WMShell's DesktopModeStatus
+only looks at these resources: SystemUI's wmshell.main thread throws
+"Can't create root task for unsupported windowingMode=5" from
+DesktopDisplayEventHandler.createDefaultDesksIfNeeded and SystemUI
+crash-loops, leaving the keyguard and the setup wizard undrawn.
+---
+diff --git a/overlay/frameworks/base/core/res/res/values/config.xml b/overlay/frameworks/base/core/res/res/values/config.xml
+--- a/overlay/frameworks/base/core/res/res/values/config.xml
++++ b/overlay/frameworks/base/core/res/res/values/config.xml
+@@ -46,6 +46,14 @@
+          default to this value; Settings lists color correction under "Experimental". -->
+     <bool name="config_setColorTransformAccelerated">false</bool>
+ 
++    <!-- Teclast P80: no desktop windowing. LineageOS enables it for every device and lets
++         tablets host desktops, but ro.config.low_ram makes the window manager turn off
++         multi-window and so freeform windows, and SystemUI's shell then crashes in a loop
++         creating the default desk ("Can't create root task for unsupported windowingMode=5"),
++         which leaves the keyguard and the setup wizard undrawn. -->
++    <bool name="config_isDesktopModeSupported">false</bool>
++    <bool name="config_canInternalDisplayHostDesktops">false</bool>
++
+     <bool name="config_supportAudioSourceUnprocessed">true</bool>
+ 
+     <string-array name="config_packagesExemptFromSuspension" translatable="false">
+-- 
+2.43.0

@@ -1,0 +1,31 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: P80 builder <builder@localhost>
+Date: Fri, 30 Oct 2026 20:45:00 +0100
+Subject: [PATCH] Teclast P80: deep Doze without a motion sensor
+
+DeviceIdleController.scheduleAlarmLocked() returns early while
+config_autoPowerModeUseMotionSensor is true and there is no
+significant-motion sensor, so the P80 (accelerometer only) never left
+light idle: 96 % light idle and no deep idle in 2-hour standby tests on
+LineageOS 23.2 and 24.0. Turn the motion requirement off, as the
+framework does for devices whose movement should not count.
+---
+diff --git a/overlay/frameworks/base/core/res/res/values/config.xml b/overlay/frameworks/base/core/res/res/values/config.xml
+--- a/overlay/frameworks/base/core/res/res/values/config.xml
++++ b/overlay/frameworks/base/core/res/res/values/config.xml
+@@ -54,6 +54,13 @@
+     <bool name="config_isDesktopModeSupported">false</bool>
+     <bool name="config_canInternalDisplayHostDesktops">false</bool>
+ 
++    <!-- Teclast P80: deep Doze. DeviceIdleController only schedules the deep idle steps when
++         config_autoPowerModeUseMotionSensor is false or a significant-motion sensor exists; the
++         P80 has only an accelerometer, so it stayed in light idle while asleep (96 % of a
++         2-hour standby test). Without motion detection deep idle follows the screen-off and
++         stationary timeouts alone, as on TVs. -->
++    <bool name="config_autoPowerModeUseMotionSensor">false</bool>
++
+     <bool name="config_supportAudioSourceUnprocessed">true</bool>
+ 
+     <string-array name="config_packagesExemptFromSuspension" translatable="false">
+-- 
+2.43.0

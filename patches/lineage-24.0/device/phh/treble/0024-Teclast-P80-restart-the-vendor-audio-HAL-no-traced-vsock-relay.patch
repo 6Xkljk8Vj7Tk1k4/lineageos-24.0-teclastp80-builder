@@ -1,0 +1,51 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: P80 builder <builder@localhost>
+Date: Fri, 30 Oct 2026 16:10:00 +0100
+Subject: [PATCH] Teclast P80: restart the vendor audio HAL, no traced vsock relay
+
+Two init rules in a new p80.rc:
+- The Android 10 vendor's audio HAL service is oneshot and relies on
+  audioserver's "onrestart restart vendor.audio-hal-2-0", which newer
+  audioserver.rc files no longer have: after the HAL died (seen when a
+  dumpsys reader closed its pipe early: SIGPIPE), audioserver restarted
+  without it and sound stayed off until a reboot.
+- AVF's traced.relay_producer_port=vsock://-1:2010 makes traced listen on
+  vsock, which SELinux denies on this 4.9 kernel (class "socket"): traced
+  never starts and init restarts it in a loop. There are no VMs here.
+---
+diff --git a/lineage_arm64_bvN4.mk b/lineage_arm64_bvN4.mk
+--- a/lineage_arm64_bvN4.mk
++++ b/lineage_arm64_bvN4.mk
+@@ -38,6 +38,10 @@
+ # Teclast P80: no phone, SMS or SIM toolkit apps on this Wi-Fi-only tablet.
+ PRODUCT_PACKAGES += p80-wifi-tablet-overrides
+ 
++# Teclast P80: init rules for the Android 10 vendor and the 4.9 kernel (see the file).
++PRODUCT_COPY_FILES += \
++    device/phh/treble/p80/p80.rc:$(TARGET_COPY_OUT_SYSTEM)/etc/init/p80.rc
++
+ # Teclast P80: the 4.9 kernel has no userfaultfd, so ART runs the concurrent copying GC.
+ # gsi_release.mk compiles the boot image, system_server and the apps for the userfaultfd GC;
+ # ART rejects that code here ("read barrier state mismatch"), recompiles the boot image and
+diff --git a/p80/p80.rc b/p80/p80.rc
+new file mode 100644
+--- /dev/null
++++ b/p80/p80.rc
+@@ -0,0 +1,15 @@
++# Teclast P80: init rules for the Android 10 vendor and the 4.9 kernel.
++
++# The vendor's audio HAL (vendor.audio-hal-2-0) is a oneshot service: Android 10's
++# audioserver.rc restarted it with "onrestart restart vendor.audio-hal-2-0", newer ones only
++# know "vendor.audio-hal". When the HAL died, audioserver restarted without it and there was
++# no sound until the next reboot.
++on property:init.svc.audioserver=restarting
++    restart vendor.audio-hal-2-0
++
++# AVF sets traced.relay_producer_port=vsock://-1:2010 for its guest VMs. This kernel has no
++# KVM, and it classes AF_VSOCK sockets as plain "socket", which traced may not create:
++# traced fails to start ("Failed to create vsock://-1:2010") and init restarts it in a loop.
++# Without a relay port traced serves only its local sockets.
++on early-init
++    setprop traced.relay_producer_port ""
+-- 
+2.43.0

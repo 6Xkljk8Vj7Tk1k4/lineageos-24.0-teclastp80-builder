@@ -1,0 +1,171 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: P80 builder <builder@localhost>
+Date: Fri, 30 Oct 2026 17:45:00 +0100
+Subject: [PATCH] lmkd: restore the paths for kernels without pidfd
+
+Android 17's lmkd assumes pidfd_open() (Linux 5.3): registering a process
+returns early when pidfd_open() fails, so on older kernels lmkd tracks no
+process at all and never kills ("pidfd_open for pid N failed; errno=38"
+for every app on the Teclast P80's 4.9 kernel); the kill-wait code would
+also hand a PID to epoll_ctl() and close() it as if it were a pidfd, and
+the reaper's last resort is pidfd_send_signal() (Linux 5.1).
+
+Bring back Android 16's handling: detect pidfd support at startup, track
+processes without a pidfd, poll /proc/<pid> instead of waiting on the
+pidfd (is_waiting_for_kill()), and kill with kill(2) when there is no
+pidfd and no cgroup kill file.
+---
+diff --git a/lmkd.cpp b/lmkd.cpp
+--- a/lmkd.cpp
++++ b/lmkd.cpp
+@@ -193,6 +193,7 @@
+ 
+ static int level_oomadj[VMPRESS_LEVEL_COUNT];
+ static int mpevfd[VMPRESS_LEVEL_COUNT] = { -1, -1, -1 };
++static bool pidfd_supported;
+ static int last_kill_pid_or_fd = -1;
+ static struct timespec last_kill_tm;
+ enum vmpressure_level prev_level = VMPRESS_LEVEL_LOW;
+@@ -1203,10 +1204,14 @@
+ 
+     procp = pid_lookup(proc.pid);
+     if (!procp) {
+-        int pidfd = TEMP_FAILURE_RETRY(pidfd_open(proc.pid, 0));
+-        if (pidfd < 0) {
+-            ALOGE("pidfd_open for pid %d failed; errno=%d", proc.pid, errno);
+-            return;
++        int pidfd = -1;
++
++        if (pidfd_supported) {
++            pidfd = TEMP_FAILURE_RETRY(pidfd_open(proc.pid, 0));
++            if (pidfd < 0) {
++                ALOGE("pidfd_open for pid %d failed; errno=%d", proc.pid, errno);
++                return;
++            }
+         }
+ 
+         procp = new (std::nothrow) struct proc();
+@@ -2379,7 +2384,27 @@
+ static Watchdog watchdog(WATCHDOG_TIMEOUT_SEC, watchdog_callback);
+ 
+ static bool is_kill_pending(void) {
+-    return last_kill_pid_or_fd >= 0;
++    char buf[24];
++
++    if (last_kill_pid_or_fd < 0) {
++        return false;
++    }
++
++    if (pidfd_supported) {
++        return true;
++    }
++
++    /* when pidfd is not supported base the decision on /proc/<pid> existence */
++    snprintf(buf, sizeof(buf), "/proc/%d/", last_kill_pid_or_fd);
++    if (access(buf, F_OK) == 0) {
++        return true;
++    }
++
++    return false;
++}
++
++static bool is_waiting_for_kill(void) {
++    return pidfd_supported && last_kill_pid_or_fd >= 0;
+ }
+ 
+ static void stop_wait_for_proc_kill(bool finished) {
+@@ -2409,13 +2434,15 @@
+         }
+     }
+ 
+-    /* unregister fd */
+-    if (epoll_ctl(epollfd, EPOLL_CTL_DEL, last_kill_pid_or_fd, &epev)) {
+-        // Log an error and keep going
+-        ALOGE("epoll_ctl for last killed process failed; errno=%d", errno);
++    if (pidfd_supported) {
++        /* unregister fd */
++        if (epoll_ctl(epollfd, EPOLL_CTL_DEL, last_kill_pid_or_fd, &epev)) {
++            // Log an error and keep going
++            ALOGE("epoll_ctl for last killed process failed; errno=%d", errno);
++        }
++        maxevents--;
++        close(last_kill_pid_or_fd);
+     }
+-    maxevents--;
+-    close(last_kill_pid_or_fd);
+ 
+     last_kill_pid_or_fd = -1;
+ }
+@@ -2451,6 +2478,11 @@
+ 
+     last_kill_pid_or_fd = pid_or_fd;
+ 
++    if (!pidfd_supported) {
++        /* If pidfd is not supported just store PID and exit */
++        return;
++    }
++
+     epev.events = EPOLLIN;
+     epev.data.ptr = (void *)&kill_done_hinfo;
+     if (epoll_ctl(epollfd, EPOLL_CTL_ADD, last_kill_pid_or_fd, &epev) != 0) {
+@@ -3162,7 +3194,7 @@
+ 
+ no_kill:
+     /* Do not poll while waiting on pidfd */
+-    if (is_kill_pending()) {
++    if (is_waiting_for_kill()) {
+         /* Pause polling if we are waiting for process death notification */
+         poll_params->update = POLLING_PAUSE;
+         return;
+@@ -3426,7 +3458,7 @@
+ 
+         last_report_tm = curr_tm;
+     }
+-    if (is_kill_pending()) {
++    if (is_waiting_for_kill()) {
+         /* pause polling if we are waiting for process death notification */
+         poll_params->update = POLLING_PAUSE;
+     }
+@@ -3848,6 +3880,16 @@
+         ALOGE("Failed to read %s: %s", file_data.filename, strerror(errno));
+     }
+ 
++    /* check if kernel supports pidfd_open syscall */
++    int pidfd = TEMP_FAILURE_RETRY(pidfd_open(getpid(), 0));
++    if (pidfd < 0) {
++        pidfd_supported = (errno != ENOSYS);
++    } else {
++        pidfd_supported = true;
++        close(pidfd);
++    }
++    ALOGI("Process polling is %s", pidfd_supported ? "supported" : "not supported" );
++
+     if (!lmkd_init_hook()) {
+         ALOGE("Failed to initialize LMKD hooks.");
+         return -1;
+@@ -3957,7 +3999,7 @@
+                 call_handler(poll_params.poll_handler, &poll_params, 0);
+             }
+         } else {
+-            if (kill_timeout_ms && is_kill_pending()) {
++            if (kill_timeout_ms && is_waiting_for_kill()) {
+                 clock_gettime(CLOCK_MONOTONIC_COARSE, &curr_tm);
+                 delay = kill_timeout_ms - get_time_diff_ms(&last_kill_tm, &curr_tm);
+                 /* Wait for pidfds notification or kill timeout to expire */
+diff --git a/reaper.cpp b/reaper.cpp
+--- a/reaper.cpp
++++ b/reaper.cpp
+@@ -151,6 +151,11 @@
+         // Most, *but not all* processes are in their own cgroups managed by Android, for example
+         // children of adbd. For these processes, the best thing we can do is kill the individual
+         // process since we don't want to kill the entire cgroup.
++        if (target.pidfd < 0) {
++            // Kernels without pidfd (before 5.3) and so without cgroup kill: plain kill(2),
++            // as before Android 17. CAP_KILL required.
++            return ::kill(target.pid, SIGKILL) == 0;
++        }
+         return pidfd_send_signal(target.pidfd, SIGKILL, NULL, 0) == 0;
+     }
+ 
+-- 
+2.43.0

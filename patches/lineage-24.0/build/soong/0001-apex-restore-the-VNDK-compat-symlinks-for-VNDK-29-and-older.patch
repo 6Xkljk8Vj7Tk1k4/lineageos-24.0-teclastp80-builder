@@ -1,0 +1,62 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: P80 builder <builder@localhost>
+Date: Fri, 30 Oct 2026 16:55:00 +0100
+Subject: [PATCH] apex: restore the VNDK compat symlinks for VNDK 29 and older
+
+Android 17 dropped the /system/${LIB}/vndk-<ver> and vndk-sp-<ver> links
+into the VNDK APEX that makeCompatSymlinks() created for VNDK 29 and
+older ("prebuilt vndk libs still depend on system/lib/vndk path"). A GSI
+that ships the VNDK 29 APEX for an Android 10 vendor still needs them:
+that VNDK's libhidlbase looks for passthrough HAL implementations in
+/system/${LIB}/vndk-sp-29/hw/. On the Teclast P80 the vendor's OMX
+service could not load android.hidl.memory@1.0-impl ("libhidlmemory:
+Could not fetch mapper for ashmem shared memory"), so camera video
+recording failed with NO_MEMORY. This restores the Android 16 code.
+---
+diff --git a/apex/vndk.go b/apex/vndk.go
+--- a/apex/vndk.go
++++ b/apex/vndk.go
+@@ -15,6 +15,8 @@
+ package apex
+ 
+ import (
++	"strings"
++
+ 	"android/soong/android"
+ 	"android/soong/cc"
+ 
+@@ -110,6 +112,32 @@
+ 		symlinks = append(symlinks, ctx.InstallAbsoluteSymlink(dir, linkName, target))
+ 	}
+ 
++	// TODO(b/142911355): [VNDK APEX] Fix hard-coded references to /system/lib/vndk
++	// When all hard-coded references are fixed, remove symbolic links
++	// Note that  we should keep following symlinks for older VNDKs (<=29)
++	// Since prebuilt vndk libs still depend on system/lib/vndk path
++	if strings.HasPrefix(name, vndkApexNamePrefix) {
++		vndkVersion := strings.TrimPrefix(name, vndkApexNamePrefix)
++		if ver, err := android.ApiLevelFromUser(ctx, vndkVersion); err != nil {
++			ctx.ModuleErrorf("apex_vndk should be named as %v<ver:number>: %s", vndkApexNamePrefix, name)
++			return
++		} else if ver.GreaterThan(android.SdkVersion_Android10) {
++			return
++		}
++		// the name of vndk apex is formatted "com.android.vndk.v" + version
++		apexName := vndkApexNamePrefix + vndkVersion
++		if ctx.Config().Android64() {
++			dir := android.PathForModuleInPartitionInstall(ctx, "system", "lib64")
++			addSymlink("/apex/"+apexName+"/lib64", dir, "vndk-sp-"+vndkVersion)
++			addSymlink("/apex/"+apexName+"/lib64", dir, "vndk-"+vndkVersion)
++		}
++		if !ctx.Config().Android64() || ctx.DeviceConfig().DeviceSecondaryArch() != "" {
++			dir := android.PathForModuleInPartitionInstall(ctx, "system", "lib")
++			addSymlink("/apex/"+apexName+"/lib", dir, "vndk-sp-"+vndkVersion)
++			addSymlink("/apex/"+apexName+"/lib", dir, "vndk-"+vndkVersion)
++		}
++	}
++
+ 	// http://b/121248172 - create a link from /system/usr/icu to
+ 	// /apex/com.android.i18n/etc/icu so that apps can find the ICU .dat file.
+ 	// A symlink can't overwrite a directory and the /system/usr/icu directory once
+-- 
+2.43.0

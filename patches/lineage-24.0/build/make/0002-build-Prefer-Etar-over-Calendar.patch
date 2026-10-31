@@ -1,0 +1,26 @@
+From 91ec13c9e6448560a0b65f3f04c4361138de55fc Mon Sep 17 00:00:00 2001
+From: MisterZtr <andey2004586@gmail.com>
+Date: Wed, 28 Oct 2026 20:05:36 +0000
+Subject: [PATCH] build-Prefer-Etar-over-Calendar
+
+Change-Id: I4d889d5e2be1b601591fa701181cc134cc4abb75
+---
+ target/product/gsi/Android.bp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/target/product/gsi/Android.bp b/target/product/gsi/Android.bp
+index f9c9aaa..ffd21a7 100644
+--- a/target/product/gsi/Android.bp
++++ b/target/product/gsi/Android.bp
+@@ -185,7 +185,7 @@ android_system_image {
+         "preinstalled-packages-platform-telephony-system-ext.xml",
+ 
+         // handheld_product
+-        "Calendar",
++        "Etar",
+         "Contacts",
+         "DeskClock",
+         "Gallery2",
+-- 
+2.25.1
+

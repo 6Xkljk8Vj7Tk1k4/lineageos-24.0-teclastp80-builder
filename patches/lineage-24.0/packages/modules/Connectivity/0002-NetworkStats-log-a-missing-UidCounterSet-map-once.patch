@@ -1,0 +1,46 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: P80 builder <builder@localhost>
+Date: Sat, 31 Oct 2026 10:00:00 +0100
+Subject: [PATCH] NetworkStats: log a missing UidCounterSet map once
+
+On kernels without the netd BPF programs (the Teclast P80's 4.9 kernel
+with the TrebleDroid no-BPF changes) the uid counter set map cannot be
+opened and mUidCounterSetMap stays null. setKernelCounterSet() then
+called Log.wtf() for every uid foreground/background change: ~8 a minute
+while switching apps on the tablet, each one an error line, a stack
+trace collected for ActivityManager, an am_wtf event and a dropbox entry
+attempt. Warn once instead; the method already returned without doing
+anything.
+---
+ .../src/com/android/server/net/NetworkStatsService.java   | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/service-t/src/com/android/server/net/NetworkStatsService.java b/service-t/src/com/android/server/net/NetworkStatsService.java
+index 270ac89..f92bc47 100644
+--- a/service-t/src/com/android/server/net/NetworkStatsService.java
++++ b/service-t/src/com/android/server/net/NetworkStatsService.java
+@@ -463,6 +463,7 @@ public class NetworkStatsService extends INetworkStatsService.Stub {
+      */
+     private SparseIntArray mActiveUidCounterSet = new SparseIntArray();
+     private IBpfMap<S32, U8> mUidCounterSetMap = null;
++    private boolean mLoggedNullUidCounterSetMap = false;
+     private IBpfMap<S64, CookieTagMapValue> mCookieTagMap = null;
+     private IBpfMap<StatsMapKey, StatsMapValue> mStatsMapA = null;
+     private IBpfMap<StatsMapKey, StatsMapValue> mStatsMapB = null;
+@@ -2097,7 +2098,12 @@ public class NetworkStatsService extends INetworkStatsService.Stub {
+ 
+     private void setKernelCounterSet(int uid, int set) {
+         if (mUidCounterSetMap == null) {
+-            Log.wtf(TAG, "Fail to set UidCounterSet: Null bpf map");
++            // No map without the netd BPF programs (old kernels): warn once instead of a WTF
++            // for every uid foreground/background change.
++            if (!mLoggedNullUidCounterSetMap) {
++                mLoggedNullUidCounterSetMap = true;
++                Log.w(TAG, "Fail to set UidCounterSet: Null bpf map");
++            }
+             return;
+         }
+ 
+-- 
+2.53.0
+

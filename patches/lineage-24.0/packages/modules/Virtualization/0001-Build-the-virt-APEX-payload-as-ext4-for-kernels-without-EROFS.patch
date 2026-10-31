@@ -1,0 +1,31 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: P80 builder <builder@localhost>
+Date: Fri, 30 Oct 2026 14:21:00 +0100
+Subject: [PATCH] Build the virt APEX payload as ext4 for kernels without EROFS
+
+Android 17 builds com.android.virt with a compressed EROFS payload; it is
+the only APEX that does. A GSI on a kernel without CONFIG_EROFS_FS (the
+Teclast P80's 4.9) cannot mount it: as a bootstrap APEX
+(RELEASE_AVF_ENABLE_EARLY_VM) apexd-bootstrap fails and init reboots into
+the bootloader ("bootloader,bootstrap-apexd-failed"); without early VM
+the APEX stays inactive, framework-virtualization.jar is missing from
+BOOTCLASSPATH and ART rejects the boot image's mainline extension.
+Use the default ext4 payload, as Android 16 did (99 MB instead of 66 MB).
+---
+diff --git a/build/apex/Android.bp b/build/apex/Android.bp
+--- a/build/apex/Android.bp
++++ b/build/apex/Android.bp
+@@ -201,10 +201,7 @@
+         default: unset,
+     }),
+ 
+-    payload_fs_type: "erofs",
+-    erofs: {
+-        pcluster_size: 32768,
+-    },
++    // Teclast P80 GSI: ext4 as on Android 16, see the commit message.
+ }
+ 
+ apex_defaults {
+-- 
+2.43.0

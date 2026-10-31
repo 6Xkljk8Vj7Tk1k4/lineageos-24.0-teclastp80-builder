@@ -1,0 +1,124 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: P80 builder <builder@localhost>
+Date: Thu, 29 Oct 2026 10:30:00 +0100
+Subject: [PATCH] Mark the restored FDE and network class APIs hidden again
+
+TrebleDroid's "Revert Remove more FDE methods from StorageManager" and
+"TelephonyManager: bring back getNetworkClass" restore members documented
+with the inline form {@hide}. Android 17's frameworks/base uses only the
+block tag @hide, and metalava now treats these members as public API:
+api-stubs-docs-non-updatable fails with "New API must be flagged with
+@FlaggedApi" for StorageManager.isEncryptable() & co. and
+TelephonyManager.NETWORK_CLASS_*. Use the block tag so they stay hidden,
+as they were on Android 16.
+---
+diff --git a/core/java/android/os/storage/StorageManager.java b/core/java/android/os/storage/StorageManager.java
+--- a/core/java/android/os/storage/StorageManager.java
++++ b/core/java/android/os/storage/StorageManager.java
+@@ -1713,7 +1713,7 @@
+         return RoSystemProperties.CRYPTO_FILE_ENCRYPTED;
+     }
+ 
+-    /** {@hide}
++    /** @hide
+      * Is this device encryptable or already encrypted?
+      * @return true for encryptable or encrypted
+      *         false not encrypted and not encryptable
+@@ -1722,7 +1722,7 @@
+         return RoSystemProperties.CRYPTO_ENCRYPTABLE;
+     }
+ 
+-    /** {@hide}
++    /** @hide
+      * @deprecated Use {@link #isFileEncrypted} instead, since emulated FBE is no longer supported.
+      */
+     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
+@@ -1731,7 +1731,7 @@
+         return false;
+     }
+ 
+-    /** {@hide}
++    /** @hide
+      * Is this device block encrypted?
+      * @return true for block encrypted. (Implies isEncrypted() == true)
+      *         false not encrypted or file encrypted
+@@ -1740,7 +1740,7 @@
+         return false;
+     }
+ 
+-    /** {@hide}
++    /** @hide
+      * Is this device block encrypted with credentials?
+      * @return true for crediential block encrypted.
+      *         (Implies isBlockEncrypted() == true)
+@@ -1750,7 +1750,7 @@
+         return false;
+     }
+ 
+-    /** {@hide}
++    /** @hide
+      * Is this device in the process of being block encrypted?
+      * @return true for encrypting.
+      *         false otherwise
+@@ -1764,7 +1764,7 @@
+         return false;
+     }
+ 
+-    /** {@hide}
++    /** @hide
+      * Is this device non default block encrypted and in the process of
+      * prompting for credentials?
+      * @return true for prompting for credentials.
+@@ -1779,7 +1779,7 @@
+         return false;
+     }
+ 
+-    /** {@hide}
++    /** @hide
+      * @deprecated Use {@link #isFileEncrypted} instead, since emulated FBE is no longer supported.
+      */
+     @Deprecated
+diff --git a/telephony/java/android/telephony/TelephonyManager.java b/telephony/java/android/telephony/TelephonyManager.java
+--- a/telephony/java/android/telephony/TelephonyManager.java
++++ b/telephony/java/android/telephony/TelephonyManager.java
+@@ -3287,18 +3287,33 @@
+      * {@link TelephonyConnectionService#getFirstPhoneForEmergencyCall()}. Any newer technologies
+      * should be added after the current definitions.
+      */
+-    /** Unknown network class. {@hide} */
++    /**
++     * Unknown network class.
++     * @hide
++     */
+     public static final int NETWORK_CLASS_UNKNOWN = 0;
+-    /** Class of broadly defined "2G" networks. {@hide} */
++    /**
++     * Class of broadly defined "2G" networks.
++     * @hide
++     */
+     @UnsupportedAppUsage
+     public static final int NETWORK_CLASS_2_G = 1;
+-    /** Class of broadly defined "3G" networks. {@hide} */
++    /**
++     * Class of broadly defined "3G" networks.
++     * @hide
++     */
+     @UnsupportedAppUsage
+     public static final int NETWORK_CLASS_3_G = 2;
+-    /** Class of broadly defined "4G" networks. {@hide} */
++    /**
++     * Class of broadly defined "4G" networks.
++     * @hide
++     */
+     @UnsupportedAppUsage
+     public static final int NETWORK_CLASS_4_G = 3;
+-    /** Class of broadly defined "5G" networks. {@hide} */
++    /**
++     * Class of broadly defined "5G" networks.
++     * @hide
++     */
+     public static final int NETWORK_CLASS_5_G = 4;
+ 
+     /**
+-- 
+2.43.0

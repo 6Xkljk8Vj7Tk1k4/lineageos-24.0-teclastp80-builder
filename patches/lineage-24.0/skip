@@ -1,0 +1,91 @@
+# Upstream patches build.sh leaves out, one "<set>/<directory>/<file>" per line (set names
+# from patches/lineage-24.0/sets).
+#
+# As on lineage-23.2: "securize" by default makes the system claim a locked bootloader and
+# green verified boot to pass integrity checks; LineageOS does not lie about the device state.
+gsi-personal/device_phh_treble/0003-securize-rework-to-property-based-toggle-with-GSI-fi.patch
+# Refresh rate and UI tweaks.
+gsi-personal/device_phh_treble/0008-overlay-Add-min-max-refresh-rate-and-tweak-UI.patch
+# privapp permissions "log" instead of LineageOS's "enforce" (the stock P80 runs "enforce").
+gsi-personal/platform_vendor_lineage/0002-config-Log-privapp-permissions-whitelist-violations.patch
+# Its hunk ends at the old last line of rw-system.sh and no longer applies; it only guards a
+# sysfs write for a Lenovo pen, which merely logs an error on other devices.
+gsi-staging/platform_device_phh_treble/0002-guard-goodix-sysfs-write-behind-existence-check.patch
+# Patches that do not apply to LineageOS 24.0's forks; ported versions are in
+# patches/lineage-24.0/<project>/ under the same file name:
+rl-personal/platform_packages_modules_Connectivity/0001-connectivity-tolerate-BPF-less-legacy-kernels.patch
+rl-personal/platform_system_core/0002-init-libprocessgroup-tolerate-legacy-vendor-kernels.patch
+rl-trebledroid/platform_system_core/0012-Ignore-dm-verity-and-AVB-setup-failures.patch
+rl-trebledroid/platform_system_vold/0006-Revert-vold-remove-session-keyring-workaround-for-ol.patch
+rl-personal/platform_frameworks_base/0011-skip-fs-verity-on-kernels-that-don-t-support-it.patch
+gsi-personal/platform_build/0002-build-Prefer-Etar-over-Calendar.patch
+rl-personal/platform_build_release/0002-disable-unavailable-mainline-features-for-aosp_curre.patch
+# Removes AVF from the product; only consistent with RestlessOS's manifest, which drops the
+# virtualization sources ("[service-virtualization] in contents must also be declared in
+# PRODUCT_APEX_SYSTEM_SERVER_JARS"). AVF stays as on 23.2.
+rl-personal/platform_build/0003-build-drop-the-virtualization-deps-from-the-gsi-product-images.patch
+rl-personal/platform_frameworks_native/0006-disable-the-aiseal-host-service-on-the-gsi.patch
+gsi-personal/platform_build/0003-Allow-the-GSI-tree-to-handle-device-properties-indep.patch
+# Do not apply to LineageOS 24.0 and are worth porting for this tablet later:
+rl-personal/platform_external_selinux/0001-Skip-selinux_flags-when-proc-attribute-is-unavailabl.patch
+rl-trebledroid/platform_frameworks_base/0004-Relax-requirement-for-visible-flag-to-sdcards.patch
+rl-trebledroid/platform_frameworks_base/0047-Don-t-crash-system_server-if-we-fail-to-parse-dynami.patch
+# Do not apply to LineageOS 24.0 and are not needed here (features for other devices,
+# microG, GrapheneOS UI, VNDK 30, telephony):
+rl-personal/platform_bionic/0001-Replace-Google-DNS-IP-in-bionic-IPv4-connectivity-pr.patch
+rl-personal/platform_build/0002-gsi-product-trim-adjustments.patch
+rl-trebledroid/platform_frameworks_base/0006-Implement-a-persistent-property-to-override-the-defa.patch
+rl-trebledroid/platform_frameworks_base/0011-HOME-deserves-to-wake-up-devices-just-as-well-as-bac.patch
+rl-trebledroid/platform_frameworks_base/0014-Re-implement-fnmatch-like-behaviour-for-RRO-java-sid.patch
+rl-trebledroid/platform_frameworks_base/0015-Remove-useless-notification-about-console-service-be.patch
+rl-trebledroid/platform_frameworks_base/0022-Allow-disabling-of-fingerprint-cleanups-needed-on-so.patch
+rl-trebledroid/platform_frameworks_base/0025-SystemUI-Use-AVCProfileMain-for-screen-recorder.patch
+rl-trebledroid/platform_frameworks_base/0035-FOD-support-for-Asus-Samsung-recent-Xiaomi-and-RedMa.patch
+rl-trebledroid/platform_frameworks_base/0036-Fix-brightness-slider-curve-for-some-devices.patch
+rl-trebledroid/platform_frameworks_base/0039-Add-a-prop-to-use-linear-backlight-control.patch
+rl-trebledroid/platform_frameworks_base/0040-Add-support-for-Samsung-full-brightness-on-their-AID.patch
+rl-trebledroid/platform_frameworks_base/0041-Add-Samsung-sysinput.patch
+rl-trebledroid/platform_frameworks_base/0042-Bunch-of-FOD-stuff-commonize-refreshing-the-services.patch
+rl-trebledroid/platform_frameworks_base/0046-Allow-signature-spoofing-for-microG-Companion-Servic.patch
+rl-trebledroid/platform_frameworks_base/0051-Allow-spoofing-signingInfo-for-microG-Companion-Serv.patch
+rl-personal/platform_frameworks_base/0002-Prefer-HIDL-when-AIDL-fingerprint-sensor-is-virtual.patch
+rl-personal/platform_frameworks_base/0005-Add-system-property-overrides-for-status-bar-and-cor.patch
+rl-personal/platform_frameworks_base/0020-drop-framework-virtualization-references.patch
+rl-personal/platform_frameworks_base/0021-remove-the-aiseal-and-npu-framework-clients.patch
+rl-personal/platform_frameworks_base/0024-settingslib-make-the-linear-brightness-curve-map-the.patch
+rl-personal/platform_frameworks_base/0025-overlays-add-a-gestural-navigation-mode-overlay-with.patch
+rl-personal/platform_frameworks_base/0026-keyguard-fall-back-to-the-primary-bouncer-when-the-s.patch
+rl-personal/platform_frameworks_base/0029-keyguard-run-the-lock-time-gc-off-the-systemui-main-.patch
+rl-personal/platform_frameworks_base/0030-settings-tethering-vpn-upstream-setting.patch
+rl-personal/platform_frameworks_base/0032-vpn-stop-turning-newly-authorized-vpn-apps-into-alwa.patch
+rl-personal/platform_frameworks_base/0039-battery-keep-the-samsung-battery-cycle-count.patch
+rl-trebledroid/platform_frameworks_opt_telephony/0005-Conditionally-revert-Block-Binder-thread-until-incom.patch
+rl-personal/platform_packages_modules_Connectivity/0005-tethering-allow-the-vpn-as-the-upstream-for-tethered.patch
+# Apply, but use Samsung's vendor AIDL interfaces whose java libraries come from the
+# skipped Samsung patches 0035/0040/0041 (services.core: "symbol not found
+# vendor.samsung.hardware.biometrics.fingerprint.ISehFingerprint", "could not resolve
+# vendor.samsung.hardware.sysinput.ISehSysInputDev"); Samsung-only features:
+rl-personal/platform_frameworks_base/0012-display-samsung-sysinput-touch-wake.patch
+rl-personal/platform_frameworks_base/0031-fingerprint-turn-vendor-reported-sensor-swipes-into-.patch
+# MisterZtr staging: Samsung-only sepolicy in samsung.te. 0009 (qseecomd and gatekeeper
+# data) uses gatekeeper_vendor_data_file, which Android 17 moved from system/sepolicy/private
+# to the vendor policy (system_ext_sepolicy.cil: "unknown type gatekeeper_vendor_data_file");
+# 0011 (Exynos USB HAL) and 0019 (Samsung touch sysfs) use 0009's lines as context.
+gsi-staging/platform_device_phh_treble/0009-allow-qseecomd-to-access-gatekeeper-data-on-samsung-.patch
+gsi-staging/platform_device_phh_treble/0011-allow-USB-HAL-to-read-system-properties-on-samsung-e.patch
+gsi-staging/platform_device_phh_treble/0019-allow-system_server-to-write-samsung-touch-sysfs-on-.patch
+# Same change as gsi-staging vendor_magisk 0001 (applied there):
+rl-personal/vendor_magisk/0001-Define-__BIONIC_ALIGN-if-missing.patch
+# Adds the restored FDE and network class members to core/api/current.txt; Metalava then
+# still fails with "New API must be flagged with @FlaggedApi". Our frameworks/base 0100
+# keeps them hidden instead (block @hide):
+rl-personal/platform_frameworks_base/0019-core-api-restored-fde-and-network-class-entries.patch
+# RestlessOS rom set (only system/core is used, for 0002 "ueventd: restore legacy config
+# paths for pre-S vendors"): 0001 hardens GrapheneOS's auto-reboot timer, which LineageOS
+# does not have.
+rl-rom/platform_system_core/0001-init-make-auto_reboot-robust-on-older-vendor-kernels.patch
+# Same patch as MisterZtr's staging frameworks/native 0006, which the 23.2 build leaves out:
+# SurfaceFlinger forces an HWC power OFF/ON at boot, after which the Allwinner display
+# driver's runtime-PM count is off by one and the panel autosuspends 5 s after every
+# screen-on. On 24.0 the panel stayed black while screenshots showed the setup wizard.
+rl-personal/platform_frameworks_native/0004-fix-display-power-on-for-vendor-HWCs-with-stale-boot.patch

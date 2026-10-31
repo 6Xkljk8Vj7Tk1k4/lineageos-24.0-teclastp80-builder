@@ -1,0 +1,13 @@
+# lineage-24.0 (Android 17), proof of concept. The GSI and LineageOS side stays as on 23.2
+# (device/phh/treble, treble_app, vendor_* are pinned to the same commits): MisterZtr's
+# lineage-23.2 sets for those projects and his LineageOS build changes. The platform side
+# comes from RestlessOS's Android 17 ports of TrebleDroid's patches and its legacy-kernel
+# set (a GrapheneOS-based GSI: its app and feature additions stay out).
+# From its rom set only system/core, for the ueventd legacy config paths (Android 10
+# vendors keep their device permissions in /vendor/ueventd.rc, which Android 17 ignores).
+# <name> <directory in the tree> <filter>
+gsi-staging  LineageOS_gsi/patches/trebledroid-staging only:platform_device_phh_treble,treble_app,vendor_lptools,vendor_magisk
+gsi-personal LineageOS_gsi/patches/personal            only:device_phh_treble,platform_build,platform_vendor_lineage,platform_vendor_hardware_overlay,platform_hardware_oplus
+rl-trebledroid treble_restlessos/patches/trebledroid   except:platform_device_phh_treble,treble_app,platform_treble_app
+rl-personal    treble_restlessos/patches/personal      only:platform_bionic,platform_build,platform_build_release,platform_external_selinux,platform_frameworks_av,platform_frameworks_base,platform_frameworks_native,platform_hardware_interfaces,platform_kernel_configs,platform_packages_modules_Connectivity,platform_packages_modules_DnsResolver,platform_packages_modules_Wifi,platform_packages_modules_vndk,platform_prebuilts_vndk_v29,platform_system_apex,platform_system_bpf,platform_system_core,platform_system_extras,platform_system_fs_fs_mgr,platform_system_linkerconfig,platform_system_memory_lmkd,platform_system_netd,platform_system_sepolicy,platform_system_vold,vendor_magisk
+rl-rom         treble_restlessos/patches/rom           only:platform_system_core

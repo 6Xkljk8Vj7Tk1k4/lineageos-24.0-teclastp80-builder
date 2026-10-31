@@ -1,0 +1,36 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: P80 builder <builder@localhost>
+Date: Fri, 30 Oct 2026 23:15:00 +0100
+Subject: [PATCH] Teclast P80: 64-bit apps only
+
+The Android 10 vendor's ro.zygote=zygote64_32 keeps a 32-bit zygote with
+a preloaded framework running for 32-bit-only apps (~75 MB PSS measured
+on LineageOS 24.0, the third-largest process after system_server and
+SystemUI), while the system has no such app. Override ro.zygote and the
+product ABI lists from the product partition, which init reads last and
+uses first when it derives ro.product.cpu.abilist*.
+---
+diff --git a/lineage_arm64_bvN4.mk b/lineage_arm64_bvN4.mk
+--- a/lineage_arm64_bvN4.mk
++++ b/lineage_arm64_bvN4.mk
+@@ -38,6 +38,18 @@
+ # Teclast P80: no phone, SMS or SIM toolkit apps on this Wi-Fi-only tablet.
+ PRODUCT_PACKAGES += p80-wifi-tablet-overrides
+ 
++# Teclast P80: 64-bit apps only. The vendor (Android 10) sets ro.zygote=zygote64_32, so a
++# 32-bit zygote with its own preloaded framework (~75 MB PSS on this 2 GB tablet) runs for
++# 32-bit-only apps, of which this system has none (WebView also ships arm64). The product
++# partition's build.prop is read last and overrides the vendor's values, and init derives
++# ro.product.cpu.abilist* from the product partition first, so PackageManager stops offering
++# 32-bit ABIs. The vendor's 32-bit HALs (e.g. the OMX codecs) are separate processes and keep
++# running; mediaserver and drmserver switch to their 64-bit builds (IPC to the HALs).
++PRODUCT_PRODUCT_PROPERTIES += \
++    ro.zygote=zygote64 \
++    ro.product.product.cpu.abilist=arm64-v8a \
++    ro.product.product.cpu.abilist64=arm64-v8a
++
+ # Teclast P80: init rules for the Android 10 vendor and the 4.9 kernel (see the file).
+ PRODUCT_COPY_FILES += \
+     device/phh/treble/p80/p80.rc:$(TARGET_COPY_OUT_SYSTEM)/etc/init/p80.rc
+-- 
+2.43.0

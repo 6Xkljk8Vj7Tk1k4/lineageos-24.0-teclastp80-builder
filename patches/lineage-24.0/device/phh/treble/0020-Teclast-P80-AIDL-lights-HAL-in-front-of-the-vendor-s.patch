@@ -1,0 +1,226 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: P80 builder <builder@localhost>
+Date: Wed, 28 Oct 2026 20:07:59 +0000
+Subject: [PATCH] Teclast P80: AIDL lights HAL in front of the vendor's HIDL
+ light@2.0
+
+Android 17 removed the framework's HIDL android.hardware.light@2.0
+client (AOSP 459627afd2) and LightsService only waits for the AIDL
+ILights HAL. The P80's vendor has only HIDL light@2.0 (lights.ceres),
+which drives the display backlight; without it brightness control is
+gone. android.hardware.lights-service.p80 serves ILights/default (V2)
+from the system partition, declared in the framework VINTF manifest
+like TrebleDroid's sysbta, and forwards getLights()/setLightState() to
+the vendor's HIDL service. It uses tryGetService() so a vendor without a
+light HAL cannot block system_server, which waits for declared HALs.
+Needs the light@2.0 definitions RestlessOS restores in
+hardware/interfaces (lineage-24.0 only).
+---
+ lineage_arm64_bvN4.mk                         |  5 +
+ p80-lights/Android.bp                         | 21 ++++
+ .../android.hardware.lights-service.p80.rc    |  5 +
+ p80-lights/lights-service-p80.xml             |  7 ++
+ p80-lights/sepolicy/file_contexts             |  1 +
+ p80-lights/sepolicy/hal_light_p80.te          |  9 ++
+ p80-lights/service.cpp                        | 98 +++++++++++++++++++
+ 7 files changed, 146 insertions(+)
+ create mode 100644 p80-lights/Android.bp
+ create mode 100644 p80-lights/android.hardware.lights-service.p80.rc
+ create mode 100644 p80-lights/lights-service-p80.xml
+ create mode 100644 p80-lights/sepolicy/file_contexts
+ create mode 100644 p80-lights/sepolicy/hal_light_p80.te
+ create mode 100644 p80-lights/service.cpp
+
+diff --git a/lineage_arm64_bvN4.mk b/lineage_arm64_bvN4.mk
+index cebeb76..3b96dc9 100644
+--- a/lineage_arm64_bvN4.mk
++++ b/lineage_arm64_bvN4.mk
+@@ -50,3 +50,8 @@ PRODUCT_ENABLE_UFFD_GC := false
+ ifneq ($(P80_UPDATER_URI),)
+ PRODUCT_PRODUCT_PROPERTIES += lineage.updater.uri=$(P80_UPDATER_URI)
+ endif
++
++# Teclast P80: Android 17's framework only talks to the AIDL lights HAL, the vendor's
++# (display backlight) is HIDL light@2.0: a system-side AIDL service forwards to it.
++PRODUCT_PACKAGES += android.hardware.lights-service.p80
++SYSTEM_EXT_PRIVATE_SEPOLICY_DIRS += device/phh/treble/p80-lights/sepolicy
+diff --git a/p80-lights/Android.bp b/p80-lights/Android.bp
+new file mode 100644
+index 0000000..5564674
+--- /dev/null
++++ b/p80-lights/Android.bp
+@@ -0,0 +1,21 @@
++// Teclast P80: AIDL ILights in front of the vendor's HIDL light@2.0 (see service.cpp).
++cc_binary {
++    name: "android.hardware.lights-service.p80",
++    relative_install_path: "hw",
++    init_rc: ["android.hardware.lights-service.p80.rc"],
++    vintf_fragment_modules: ["lights-service-p80.xml"],
++    srcs: ["service.cpp"],
++    shared_libs: [
++        "android.hardware.light-V2-ndk",
++        "android.hardware.light@2.0",
++        "libbase",
++        "libbinder_ndk",
++        "libhidlbase",
++        "libutils",
++    ],
++}
++
++vintf_fragment {
++    name: "lights-service-p80.xml",
++    src: "lights-service-p80.xml",
++}
+diff --git a/p80-lights/android.hardware.lights-service.p80.rc b/p80-lights/android.hardware.lights-service.p80.rc
+new file mode 100644
+index 0000000..91c5337
+--- /dev/null
++++ b/p80-lights/android.hardware.lights-service.p80.rc
+@@ -0,0 +1,5 @@
++service system.lights-p80 /system/bin/hw/android.hardware.lights-service.p80
++    class hal
++    user system
++    group system
++    shutdown critical
+diff --git a/p80-lights/lights-service-p80.xml b/p80-lights/lights-service-p80.xml
+new file mode 100644
+index 0000000..fe62cbd
+--- /dev/null
++++ b/p80-lights/lights-service-p80.xml
+@@ -0,0 +1,7 @@
++<manifest version="1.0" type="framework">
++    <hal format="aidl">
++        <name>android.hardware.light</name>
++        <version>2</version>
++        <fqname>ILights/default</fqname>
++    </hal>
++</manifest>
+diff --git a/p80-lights/sepolicy/file_contexts b/p80-lights/sepolicy/file_contexts
+new file mode 100644
+index 0000000..6ceaea1
+--- /dev/null
++++ b/p80-lights/sepolicy/file_contexts
+@@ -0,0 +1 @@
++/system/bin/hw/android\.hardware\.lights-service\.p80 u:object_r:hal_light_p80_exec:s0
+diff --git a/p80-lights/sepolicy/hal_light_p80.te b/p80-lights/sepolicy/hal_light_p80.te
+new file mode 100644
+index 0000000..4905c7b
+--- /dev/null
++++ b/p80-lights/sepolicy/hal_light_p80.te
+@@ -0,0 +1,9 @@
++# Teclast P80: system-side AIDL lights HAL, a client of the vendor's HIDL light@2.0.
++type hal_light_p80, domain, coredomain;
++type hal_light_p80_exec, exec_type, system_file_type, file_type;
++init_daemon_domain(hal_light_p80)
++hal_server_domain(hal_light_p80, hal_light)
++hal_client_domain(hal_light_p80, hal_light)
++binder_use(hal_light_p80)
++hwbinder_use(hal_light_p80)
++get_prop(hal_light_p80, hwservicemanager_prop)
+diff --git a/p80-lights/service.cpp b/p80-lights/service.cpp
+new file mode 100644
+index 0000000..a3562f6
+--- /dev/null
++++ b/p80-lights/service.cpp
+@@ -0,0 +1,98 @@
++/*
++ * Teclast P80: Android 17 dropped the framework's HIDL android.hardware.light@2.0 client
++ * (AOSP 459627afd2), but the tablet's only lights HAL, which drives the display backlight,
++ * is the vendor's HIDL light@2.0. This system-side service serves the AIDL ILights HAL the
++ * framework looks for and forwards every call to the vendor's HIDL service.
++ */
++#include <aidl/android/hardware/light/BnLights.h>
++#include <android-base/logging.h>
++#include <android/binder_manager.h>
++#include <android/binder_process.h>
++#include <android/hardware/light/2.0/ILight.h>
++
++#include <mutex>
++
++using ::aidl::android::hardware::light::BnLights;
++using ::aidl::android::hardware::light::HwLight;
++using ::aidl::android::hardware::light::HwLightState;
++using ::aidl::android::hardware::light::LightType;
++using ::android::sp;
++using ::android::hardware::hidl_vec;
++using ::ndk::ScopedAStatus;
++namespace V2_0 = ::android::hardware::light::V2_0;
++
++namespace {
++
++class Lights : public BnLights {
++  public:
++    ScopedAStatus setLightState(int32_t id, const HwLightState& state) override {
++        sp<V2_0::ILight> hal = getHal();
++        if (hal == nullptr) return ScopedAStatus::fromExceptionCode(EX_UNSUPPORTED_OPERATION);
++        V2_0::LightState hidlState;
++        // The AIDL and HIDL enums share their values (types, flash and brightness modes).
++        hidlState.color = static_cast<uint32_t>(state.color);
++        hidlState.flashMode = static_cast<V2_0::Flash>(state.flashMode);
++        hidlState.flashOnMs = state.flashOnMs;
++        hidlState.flashOffMs = state.flashOffMs;
++        hidlState.brightnessMode = static_cast<V2_0::Brightness>(state.brightnessMode);
++        auto ret = hal->setLight(static_cast<V2_0::Type>(id), hidlState);
++        if (!ret.isOk()) {
++            LOG(ERROR) << "setLight(" << id << "): " << ret.description();
++            dropHal();
++            return ScopedAStatus::fromExceptionCode(EX_UNSUPPORTED_OPERATION);
++        }
++        if (ret != V2_0::Status::SUCCESS) {
++            return ScopedAStatus::fromExceptionCode(EX_UNSUPPORTED_OPERATION);
++        }
++        return ScopedAStatus::ok();
++    }
++
++    ScopedAStatus getLights(std::vector<HwLight>* lights) override {
++        lights->clear();
++        sp<V2_0::ILight> hal = getHal();
++        if (hal == nullptr) return ScopedAStatus::ok();
++        auto ret = hal->getSupportedTypes([&](const hidl_vec<V2_0::Type>& types) {
++            for (V2_0::Type type : types) {
++                HwLight light;
++                light.id = static_cast<int32_t>(type);
++                light.ordinal = 0;
++                light.type = static_cast<LightType>(type);
++                lights->push_back(light);
++            }
++        });
++        if (!ret.isOk()) {
++            LOG(ERROR) << "getSupportedTypes: " << ret.description();
++            dropHal();
++        }
++        LOG(INFO) << "Vendor HIDL light@2.0 offers " << lights->size() << " lights";
++        return ScopedAStatus::ok();
++    }
++
++  private:
++    sp<V2_0::ILight> getHal() {
++        std::lock_guard<std::mutex> lock(mMutex);
++        // tryGetService: the framework waits for this service while booting, so it must
++        // not block when the vendor has no light HAL at all.
++        if (mHal == nullptr) mHal = V2_0::ILight::tryGetService();
++        return mHal;
++    }
++    void dropHal() {
++        std::lock_guard<std::mutex> lock(mMutex);
++        mHal = nullptr;
++    }
++
++    std::mutex mMutex;
++    sp<V2_0::ILight> mHal;
++};
++
++}  // namespace
++
++int main() {
++    ABinderProcess_setThreadPoolMaxThreadCount(0);
++    std::shared_ptr<Lights> lights = ndk::SharedRefBase::make<Lights>();
++    const std::string instance = std::string() + Lights::descriptor + "/default";
++    binder_status_t status = AServiceManager_addService(lights->asBinder().get(), instance.c_str());
++    CHECK_EQ(status, STATUS_OK) << "Could not register " << instance;
++    ABinderProcess_joinThreadPool();
++    return EXIT_FAILURE;  // should not be reached
++}
+-- 
+2.53.0
+

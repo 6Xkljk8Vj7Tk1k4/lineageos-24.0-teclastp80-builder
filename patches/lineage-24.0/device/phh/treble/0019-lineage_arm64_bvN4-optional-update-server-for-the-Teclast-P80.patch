@@ -1,0 +1,32 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: P80 builder <builder@localhost>
+Date: Wed, 28 Oct 2026 16:44:36 +0000
+Subject: [PATCH] lineage_arm64_bvN4: optional update server for the Teclast
+ P80
+
+LineageOS's Updater asks LineageOS's server, which has no builds for this
+tablet. Point it to an update server given at build time in
+P80_UPDATER_URI (the full Updater URI, -e P80_UPDATER_URI=... with
+build.sh); without it the build keeps LineageOS's default. No server is
+written into the tree.
+---
+ lineage_arm64_bvN4.mk | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/lineage_arm64_bvN4.mk b/lineage_arm64_bvN4.mk
+index 0d666de..cebeb76 100644
+--- a/lineage_arm64_bvN4.mk
++++ b/lineage_arm64_bvN4.mk
+@@ -44,3 +44,9 @@ PRODUCT_PACKAGES += p80-wifi-tablet-overrides
+ # system_server into /data on the first boot and runs the apps from their vdex until
+ # background dexopt reaches them. Compile for the concurrent copying GC instead.
+ PRODUCT_ENABLE_UFFD_GC := false
++
++# Teclast P80: LineageOS's Updater finds no builds for this tablet on LineageOS's server. An
++# update server can be passed at build time (-e P80_UPDATER_URI=...); none is written here.
++ifneq ($(P80_UPDATER_URI),)
++PRODUCT_PRODUCT_PROPERTIES += lineage.updater.uri=$(P80_UPDATER_URI)
++endif
+-- 
+2.53.0
+

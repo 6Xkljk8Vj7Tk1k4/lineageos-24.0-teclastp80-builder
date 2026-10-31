@@ -1,0 +1,44 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: P80 builder <builder@localhost>
+Date: Fri, 30 Oct 2026 23:10:00 +0100
+Subject: [PATCH] Teclast P80: leave out AudioFX, SecureElement, TeleService
+ and ONS
+
+AudioFX, SecureElement and TeleService run as persistent processes from
+boot, even when disabled with `pm disable` (measured on LineageOS 24.0:
+~6 MB PSS each for the first two). The tablet has no secure element, NFC
+or eSIM for com.android.se to serve, and LineageOS's equalizer (AudioFX)
+is optional: audio works without it. TeleService (com.android.phone,
+~16 MB PSS, persistent) returns from PhoneGlobals.onCreate() right away
+when FEATURE_TELEPHONY is missing, as on this Wi-Fi-only tablet, so it
+registers no service and the framework already runs without its
+services here.
+
+ONS (com.android.ons, the opportunistic network service for devices
+with SIM cards, persistent) has to go with TeleService: it shares the
+android.uid.phone user and the com.android.phone process, and its
+manifest requests only RECEIVE_BOOT_COMPLETED and READ_PHONE_STATE.
+ACCESS_NETWORK_STATE came from TeleService's manifest, so without
+TeleService ONS crash-looped at boot (SecurityException from
+ConnectivityService in ONSProfileActivator, ~180 restarts a minute,
+~30 % CPU at idle; measured on the tablet with only TeleService left
+out).
+---
+diff --git a/overrides/Android.mk b/overrides/Android.mk
+--- a/overrides/Android.mk
++++ b/overrides/Android.mk
+@@ -84,7 +84,11 @@
+ 	messaging \
+ 	Stk \
+ 	ImsServiceEntitlement \
+-	QuickAccessWallet
++	QuickAccessWallet \
++	AudioFX \
++	SecureElement \
++	TeleService \
++	ONS
+ LOCAL_MODULE_TAGS := optional
+ LOCAL_MODULE_CLASS := ETC
+ LOCAL_MODULE_PATH := $(TARGET_OUT_ETC)
+-- 
+2.43.0
