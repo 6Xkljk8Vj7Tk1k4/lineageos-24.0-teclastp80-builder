@@ -27,6 +27,8 @@ The G3M6 product ID may be the same hardware as the G3M2 but has not been tested
 
 ## Status
 
+<img src="docs/android-version.png" alt="Settings → About tablet → Android version on the P80: Android 17, LineageOS 24.0-20261031-UNOFFICIAL-P80, Android security update October 1, 2026, kernel 4.9.170" width="320">
+
 Tested on one P80 G3M2 (EEA) with Teclast's latest firmware, V1.04 (2021-06-09), in October 2026: first in seven test boots through DSU (see [Trying it without installing](#trying-it-without-installing-dsu)), which found the problems the patches here fix, then installed.
 
 | Feature | Status |
